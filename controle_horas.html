@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Controle de Horas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body { font-family: Arial; background:#f4f6f8; padding:15px; }
+h2,h3 { text-align:center; }
+select, button { width:100%; padding:12px; margin-top:8px; font-size:16px; }
+.btn-p { background:#4CAF50; color:white; }
+.btn-d { background:#2196F3; color:white; }
+.btn-n { background:#9E9E9E; color:white; }
+.btn-del { background:#e53935; color:white; font-size:14px; }
+.btn-exp { background:#6a1b9a; color:white; }
+.box { background:white; padding:10px; margin-top:15px; border-radius:5px; }
+ul { list-style:none; padding:0; }
+li { margin-top:5px; }
+canvas { max-width:100%; }
+</style>
+</head>
+
+<body>
+
+<h2>🕒 Controle Diário</h2>
+<p id="dataHoje"></p>
+
+<select id="hora"></select>
+
+<button class="btn-p" onclick="registrar('P')">P – Produtivo</button>
+<button class="btn-d" onclick="registrar('D')">D – Dormir</button>
+<button class="btn-n" onclick="registrar('N')">N – Nada Produtivo</button>
+
+<div class="box">
+<h3>📋 Registos</h3>
+<ul id="lista"></ul>
+</div>
+
+<div class="box">
+<h3>📊 Gráfico do dia</h3>
+<canvas id="grafico"></canvas>
+</div>
+
+<div class="box">
+<h3>⭐ Pontuação</h3>
+<p id="score"></p>
+</div>
+
+<button class="btn-exp" onclick="exportar()">📄 Exportar relatório</button>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const hoje = new Date().toISOString().slice(0,10);
+document.getElementById("dataHoje").innerText = "Data: " + hoje;
+
+const horaSelect = document.getElementById("hora");
+horaSelect.innerHTML = '<option value="">Selecionar hora</option>';
+for(let i=0;i<24;i++){
+  let h = i.toString().padStart(2,'0') + ":00";
+  horaSelect.innerHTML += `<option>${h}</option>`;
+}
+
+let dados = JSON.parse(localStorage.getItem("controleHoras")) || [];
+
+function registrar(tipo){
+  const hora = horaSelect.value;
+  if(!hora){ alert("Selecione a hora"); return; }
+  dados.push({data:hoje,hora,tipo});
+  salvar();
+}
+
+function apagar(i){
+  dados.splice(i,1);
+  salvar();
+}
+
+function salvar(){
+  localStorage.setItem("controleHoras", JSON.stringify(dados));
+  atualizar();
+}
+
+let chart;
+function atualizar(){
+  let p=0,d=0,n=0,score=0;
+  const lista=document.getElementById("lista");
+  lista.innerHTML="";
+
+  dados.forEach((r,i)=>{
+    if(r.data===hoje){
+      lista.innerHTML += `<li>${r.hora} → ${r.tipo}
+      <button class="btn-del" onclick="apagar(${i})">X</button></li>`;
+      if(r.tipo==="P"){p++;score+=10;}
+      if(r.tipo==="D") d++;
+      if(r.tipo==="N") n++;
+    }
+  });
+
+  document.getElementById("score").innerText =
+    `Pontuação de hoje: ${score} pontos`;
+
+  desenharGrafico(p,d,n);
+}
+
+function desenharGrafico(p,d,n){
+  const ctx=document.getElementById("grafico");
+  if(chart) chart.destroy();
+  chart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['Produtivo','Dormir','Nada'],
+      datasets:[{data:[p,d,n]}]
+    }
+  });
+}
+
+function exportar(){
+  let texto=`Relatório ${hoje}\n\n`;
+  dados.forEach(r=>{
+    if(r.data===hoje){
+      texto+=`${r.hora} - ${r.tipo}\n`;
+    }
+  });
+  alert(texto);
+}
+
+// 🔔 Lembrete horário (quando app está aberto)
+setInterval(()=>{
+  const m=new Date().getMinutes();
+  if(m===0){
+    alert("⏰ Hora de registrar sua atividade!");
+  }
+},60000);
+
+atualizar();
+</script>
+
+</body>
+</html>
